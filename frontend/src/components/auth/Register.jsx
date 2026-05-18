@@ -17,24 +17,49 @@ const Register = () => {
 
   useEffect(() => {
     clearError();
-    setValidationErrors({});
   }, [clearError]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     // Clear field-specific error when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors({ ...validationErrors, [name]: '' });
+    if (validationErrors[name] || value.trim()) {
+      setValidationErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearError();
+
+    const usernameTrimmed = formData.username.trim();
+    const emailTrimmed = formData.email.trim();
+    const passwordTrimmed = formData.password.trim();
+
+    let errors = {};
+    if (!usernameTrimmed) {
+      errors.username = 'Username cannot be empty or whitespace only';
+    }
+    if (!emailTrimmed) {
+      errors.email = 'Email address cannot be empty or whitespace only';
+    }
+    if (!passwordTrimmed) {
+      errors.password = 'Password cannot be empty or whitespace only';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     setValidationErrors({});
 
     try {
-      await register(formData);
+      await register({
+        username: usernameTrimmed,
+        email: emailTrimmed,
+        password: passwordTrimmed,
+      });
       addToast({ message: 'Account created successfully! Welcome aboard.', type: 'success' });
       navigate('/');
     } catch (err) {
@@ -76,7 +101,7 @@ const Register = () => {
                 onChange={handleChange}
               />
               {validationErrors.username && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.username}</p>
+                <p className="text-red-500 text-xs mt-1 font-medium">{validationErrors.username}</p>
               )}
             </div>
             <div>
@@ -94,7 +119,7 @@ const Register = () => {
                 onChange={handleChange}
               />
               {validationErrors.email && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>
+                <p className="text-red-500 text-xs mt-1 font-medium">{validationErrors.email}</p>
               )}
             </div>
             <div>
@@ -112,7 +137,7 @@ const Register = () => {
                 onChange={handleChange}
               />
               {validationErrors.password && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.password}</p>
+                <p className="text-red-500 text-xs mt-1 font-medium">{validationErrors.password}</p>
               )}
               <p className="text-gray-500 dark:text-gray-400 text-xs mt-2">
                 Password must be at least 8 characters with uppercase, lowercase, and number
@@ -123,8 +148,8 @@ const Register = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+              disabled={loading || !formData.username.trim() || !formData.email.trim() || !formData.password.trim()}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? 'Registering...' : 'Register'}
             </button>
@@ -141,4 +166,3 @@ const Register = () => {
 };
 
 export default Register;
-

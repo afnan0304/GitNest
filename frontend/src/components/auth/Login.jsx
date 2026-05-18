@@ -16,24 +16,41 @@ const Login = () => {
 
   useEffect(() => {
     clearError();
-    setValidationErrors({});
   }, [clearError]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
     // Clear field-specific error when user starts typing
-    if (validationErrors[name]) {
-      setValidationErrors({ ...validationErrors, [name]: '' });
+    if (validationErrors[name] || value.trim()) {
+      setValidationErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    clearError();
+
+    const emailTrimmed = formData.email.trim();
+    const passwordTrimmed = formData.password.trim();
+
+    let errors = {};
+    if (!emailTrimmed) {
+      errors.email = 'Email address cannot be empty or whitespace only';
+    }
+    if (!passwordTrimmed) {
+      errors.password = 'Password cannot be empty or whitespace only';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     setValidationErrors({});
 
     try {
-      await login(formData.email, formData.password);
+      await login(emailTrimmed, passwordTrimmed);
       addToast({ message: 'Signed in successfully!', type: 'success' });
       navigate('/');
     } catch (err) {
@@ -75,7 +92,7 @@ const Login = () => {
                 onChange={handleChange}
               />
               {validationErrors.email && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.email}</p>
+                <p className="text-red-500 text-xs mt-1 font-medium">{validationErrors.email}</p>
               )}
             </div>
             <div>
@@ -93,7 +110,7 @@ const Login = () => {
                 onChange={handleChange}
               />
               {validationErrors.password && (
-                <p className="text-red-500 text-xs mt-1">{validationErrors.password}</p>
+                <p className="text-red-500 text-xs mt-1 font-medium">{validationErrors.password}</p>
               )}
             </div>
           </div>
@@ -101,8 +118,8 @@ const Login = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors"
+              disabled={loading || !formData.email.trim() || !formData.password.trim()}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
@@ -119,4 +136,3 @@ const Login = () => {
 };
 
 export default Login;
-

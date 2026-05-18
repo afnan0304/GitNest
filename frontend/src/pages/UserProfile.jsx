@@ -14,7 +14,6 @@ const UserProfile = () => {
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ['profile', username],
     queryFn: () => fetchUserProfile(username),
-    enabled: Boolean(username),
     retry: 1,
   });
 
@@ -36,12 +35,11 @@ const UserProfile = () => {
     (id) => id === authUser?._id || id?._id === authUser?._id
   );
 
-  const joinedDate = profile.createdAt
-    ? new Date(profile.createdAt).toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-    })
-    : 'Unknown';
+  const joinedDate = new Date(profile.createdAt).toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#06070a] text-zinc-900 dark:text-white transition-colors">
@@ -60,7 +58,7 @@ const UserProfile = () => {
             ) : (
               <div className="w-24 h-24 rounded-full bg-emerald-500/20 dark:bg-emerald-500/10 flex items-center justify-center ring-2 ring-zinc-200 dark:ring-zinc-700">
                 <span className="text-3xl font-bold text-emerald-500">
-                  {(profile.username?.[0] || '?').toUpperCase()}
+                  {profile.username[0].toUpperCase()}
                 </span>
               </div>
             )}
@@ -138,40 +136,36 @@ const UserProfile = () => {
             </p>
           ) : (
             <div className="grid gap-3">
-              {profile.repositories.map((repo) => {
-                const starCount = Array.isArray(repo.stars) ? repo.stars.length : (repo.stars || 0);
-
-                return (
-                  <div
-                    key={repo._id}
-                    className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 hover:border-emerald-400 dark:hover:border-emerald-500 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer">
-                        {repo.name}
-                      </h3>
-                      {starCount > 0 && (
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-0.5 shrink-0">
-                          ★ {starCount}
-                        </span>
-                      )}
-                    </div>
-                    {repo.description && (
-                      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
-                        {repo.description}
-                      </p>
+              {profile.repositories.map((repo) => (
+                <div
+                  key={repo._id}
+                  className="border border-zinc-200 dark:border-zinc-800 rounded-lg p-4 hover:border-emerald-400 dark:hover:border-emerald-500 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer">
+                      {repo.name}
+                    </h3>
+                    {repo.stars > 0 && (
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-0.5 shrink-0">
+                        ★ {repo.stars}
+                      </span>
                     )}
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-400 dark:text-zinc-500">
-                      {repo.language && <span>{repo.language}</span>}
-                      {repo.updatedAt && (
-                        <span>
-                          Updated {new Date(repo.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </span>
-                      )}
-                    </div>
                   </div>
-                );
-              })}
+                  {repo.description && (
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                      {repo.description}
+                    </p>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-400 dark:text-zinc-500">
+                    {repo.language && <span>{repo.language}</span>}
+                    {repo.updatedAt && (
+                      <span>
+                        Updated {new Date(repo.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

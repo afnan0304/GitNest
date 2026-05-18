@@ -128,7 +128,7 @@ export const useAuthStore = create(
           } else {
             throw new Error('Invalid response structure');
           }
-        } catch (error) {
+        } catch {
           // Token is invalid or expired - clear auth state
           set({
             user: null,

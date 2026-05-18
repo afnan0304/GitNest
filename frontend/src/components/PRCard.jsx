@@ -19,17 +19,17 @@ const statusConfig = {
   },
 };
 
+const getTimeAgo = (dateStr) => {
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
+
 export default function PRCard({ pr }) {
   const navigate = useNavigate();
   const config = statusConfig[pr.status] || statusConfig.open;
-
-  const timeAgo = (dateStr) => {
-    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
 
   return (
     <div
@@ -69,7 +69,7 @@ export default function PRCard({ pr }) {
           </span>
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {timeAgo(pr.createdAt)}
+            {getTimeAgo(pr.createdAt)}
           </span>
         </div>
       </div>

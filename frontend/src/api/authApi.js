@@ -24,7 +24,7 @@ authApi.interceptors.request.use(
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-    } catch (error) {
+    } catch {
       // Silently ignore parsing errors - invalid storage state is handled by auth store
     }
     return config;

@@ -1,14 +1,9 @@
 
     import {
         GitBranch,
-        GitPullRequest,
-        FolderGit2,
         ShieldCheck,
-        Code2,
         Sparkles,
         Users,
-        Workflow,
-        Star,
         ArrowRight,
     } from "lucide-react";
     import { Link } from 'react-router-dom';

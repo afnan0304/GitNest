@@ -132,14 +132,15 @@ function DiffChunk({ file }) {
   );
 }
 
-function CommentItem({ comment }) {
-  const timeAgo = (dateStr) => {
-    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    return `${Math.floor(diff / 3600)}h ago`;
-  };
+const getTimeAgo = (dateStr) => {
+  const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+};
 
+function CommentItem({ comment }) {
   return (
     <div className="flex gap-3 py-4 border-b border-zinc-200 dark:border-white/5 last:border-0">
       <div className="w-8 h-8 rounded-full bg-emerald-400/20 border border-emerald-400/20 flex items-center justify-center text-emerald-400 font-bold text-sm flex-shrink-0">
@@ -150,7 +151,7 @@ function CommentItem({ comment }) {
           <span className="font-semibold text-sm text-zinc-900 dark:text-white">{comment.author}</span>
           <span className="text-xs text-zinc-500 flex items-center gap-1">
             <Clock className="w-3 h-3" />
-            {timeAgo(comment.createdAt)}
+            {getTimeAgo(comment.createdAt)}
           </span>
         </div>
         <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">{comment.body}</p>
@@ -160,7 +161,7 @@ function CommentItem({ comment }) {
 }
 
 export default function PullRequestDetailPage() {
-  const { id } = useParams();
+  useParams();
   const { user } = useAuthStore();
   const pr = MOCK_PR; // Replace with: usePR(id) or API call
 
@@ -170,14 +171,6 @@ export default function PullRequestDetailPage() {
   const [activeTab, setActiveTab] = useState('conversation');
 
   const config = statusConfig[pr.status] || statusConfig.open;
-
-  const timeAgo = (dateStr) => {
-    const diff = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  };
 
   const handleComment = () => {
     if (!comment.trim()) return;
@@ -240,7 +233,7 @@ export default function PullRequestDetailPage() {
             </span>
             <span className="flex items-center gap-1.5">
               <Clock className="w-4 h-4" />
-              {timeAgo(pr.createdAt)}
+              {getTimeAgo(pr.createdAt)}
             </span>
           </div>
         </div>
@@ -276,7 +269,7 @@ export default function PullRequestDetailPage() {
                   {pr.author[0].toUpperCase()}
                 </div>
                 <span className="font-semibold text-sm">{pr.author}</span>
-                <span className="text-xs text-zinc-500">• {timeAgo(pr.createdAt)}</span>
+                <span className="text-xs text-zinc-500">• {getTimeAgo(pr.createdAt)}</span>
               </div>
               <div className="px-5 py-4 text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
                 {pr.description}
