@@ -350,6 +350,8 @@ const Register = () => {
               {validationErrors.password && (
                 <p id="password-error" className="text-xs text-red-500 mt-1">
                   {validationErrors.password}
+                </p>
+              )}
                 {/* Sign in */}
                 <p className="text-center text-sm text-gray-500 mt-4">
                   Already have an account?{" "}
