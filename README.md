@@ -262,6 +262,13 @@ cd backend && npm install && npm run dev
 cd frontend && npm install && npm run dev
 ```
 
+**Environment variables**
+
+- `backend/.env` should include `MONGO_URI`, `JWT_SECRET`, and `JWT_EXPIRE`.
+- Optional production settings: `TRUST_PROXY=1` (behind reverse proxy) and `CORS_ORIGIN` (comma-separated origins).
+- Optional security settings: `REQUEST_BODY_LIMIT` (e.g., `10kb`), `API_RATE_LIMIT_MAX`, `API_RATE_LIMIT_WINDOW_MS`, `AUTH_RATE_LIMIT_MAX`, `AUTH_RATE_LIMIT_WINDOW_MS`, `LOG_REQUESTS=1`.
+- `frontend/.env` should include `VITE_API_BASE_URL` (for example: `http://localhost:5000`).
+
 **4. Open the app**
 
 - Frontend: http://localhost:5173

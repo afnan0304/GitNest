@@ -11,6 +11,7 @@ import {
 import { protect } from '../middleware/authMiddleware.js';
 import validate from '../middleware/validate.js';
 import {
+    repoParamValidator,
     createRepositoryValidator,
     updateRepositoryValidator,
 } from '../validators/repository.validators.js';
@@ -19,13 +20,13 @@ const router = express.Router();
 
 //Public routes
 router.get('/:username', getUserRepositories);
-router.get('/:username/:reponame', getRepository);
+router.get('/:username/:reponame', validate(repoParamValidator), getRepository);
 
 //Protected routes
 router.post('/', protect, validate(createRepositoryValidator), createRepository);
-router.put('/:username/:reponame', protect, validate(updateRepositoryValidator), updateRepository);
-router.delete('/:username/:reponame', protect, deleteRepository);
-router.post('/:username/:reponame/star', protect, starRepository);
-router.post('/:username/:reponame/fork', protect, forkRepository);
+router.put('/:username/:reponame', protect, validate(repoParamValidator), validate(updateRepositoryValidator), updateRepository);
+router.delete('/:username/:reponame', protect, validate(repoParamValidator), deleteRepository);
+router.post('/:username/:reponame/star', protect, validate(repoParamValidator), starRepository);
+router.post('/:username/:reponame/fork', protect, validate(repoParamValidator), forkRepository);
 
 export default router;

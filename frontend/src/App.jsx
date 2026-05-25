@@ -17,6 +17,8 @@ import UserProfile from './pages/UserProfile';
 import ActivityFeedPage from './pages/ActivityFeed.jsx';
 import ComponentShowcase from './pages/ComponentShowcase.jsx';
 import GitNestPrivacy from './pages/GitNestPrivacy.jsx';
+import BackToTop from './components/BackToTop/BackToTop';
+import GitNestTerms from './pages/GitNestTerms.jsx';
 
 const Dashboard = () => {
   const { user, logout } = useAuthStore();
@@ -61,7 +63,7 @@ function App() {
           <Route path="/:username" element={<UserProfile />} />
           <Route path="/showcase" element={<ComponentShowcase />} />
           <Route path="/privacy" element={<GitNestPrivacy />} />
-
+          <Route path="/terms" element={<GitNestTerms />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
@@ -70,6 +72,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </ErrorBoundary>
+      <BackToTop />
     </div>
   );
 }

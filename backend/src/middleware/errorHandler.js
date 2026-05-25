@@ -8,10 +8,6 @@ const formatMongooseValidationErrors = (err) =>
     message: e.message,
   }));
 
-/**
- * Centralized error handling middleware.
- * Normalizes MongoDB, JWT, validation, and operational errors.
- */
 const errorHandler = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal Server Error';

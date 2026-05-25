@@ -1,16 +1,21 @@
-import mongoose from 'mongoose';
 import Repository from '../models/Repository.model.js';
 import User from '../models/User.model.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import AppError from '../utils/AppError.js';
 import { sendSuccess } from '../utils/responseHandlers.js';
-import { logActivitySafely } from '../utils/logActivitySafely.js';
+import { logActivity } from '../services/activity.service.js';
 import ACTIVITY_TYPES from '../constants/activityTypes.js';
+import paginate, { buildPaginationMeta } from '../utils/paginate.js';
 
-export const createRepository = asyncHandler(async (req, res, next)=> {
+// DRY helper — resolves a :username param to the owner document's _id.
+// Returns null when the username does not exist so callers can 404 cleanly.
+const resolveOwner = (username) =>
+    User.findOne({ username: username.toLowerCase() }).select('_id');
+
+export const createRepository = asyncHandler(async (req, res, next) => {
     const { name, description, visibility, language, topics } = req.body;
 
-    if(!name) {
+    if (!name) {
         return next(new AppError('Repository name is required', 400));
     }
 
@@ -21,7 +26,10 @@ export const createRepository = asyncHandler(async (req, res, next)=> {
 
     if (existingRepo) {
         return next(
-            new AppError('You already have a repository with this name', 400)
+            new AppError(
+                'You already have a repository with this name',
+                400
+            )
         );
     }
 
@@ -34,15 +42,19 @@ export const createRepository = asyncHandler(async (req, res, next)=> {
         topics,
     });
 
-    await logActivitySafely({
-        actor: req.user.id,
-        type: ACTIVITY_TYPES.REPOSITORY_CREATED,
-        repository: repository._id,
-        metadata: {
-            repoName: repository.name,
-            visibility: repository.visibility,
-        },
-    });
+    try {
+        await logActivity({
+            actor: req.user.id,
+            type: ACTIVITY_TYPES.REPOSITORY_CREATED,
+            repository: repository._id,
+            metadata: {
+                repoName: repository.name,
+                visibility: repository.visibility,
+            },
+        });
+    } catch {
+        // Prevent activity logging failures from blocking repository creation
+    }
 
     sendSuccess(res, 201, repository, 'Repository created successfully');
 });
@@ -50,14 +62,19 @@ export const createRepository = asyncHandler(async (req, res, next)=> {
 export const getRepository = asyncHandler(async (req, res, next) => {
     const { username, reponame } = req.params;
 
-    const repository = await Repository.findOne({ name: reponame})
-    .populate('owner', 'username avatarUrl bio');
+    const owner = await resolveOwner(username);
+    if (!owner) return next(new AppError('Repository not found', 404));
 
-    if(!repository) {
+    const repository = await Repository.findOne({
+        name: reponame,
+        owner: owner._id,
+    }).populate('owner', 'username avatarUrl bio');
+
+    if (!repository) {
         return next(new AppError('Repository not found', 404));
     }
 
-    if(
+    if (
         repository.visibility === 'private' &&
         repository.owner._id.toString() !== req.user?.id
     ) {
@@ -67,200 +84,296 @@ export const getRepository = asyncHandler(async (req, res, next) => {
     sendSuccess(res, 200, repository);
 });
 
-export const getUserRepositories = asyncHandler(async (req, res, next) => {
-    const { username } = req.params;
+export const getUserRepositories = asyncHandler(
+    async (req, res, next) => {
+        const { username } = req.params;
 
-    const repositories = await Repository.find()
-    .populate({
-        path: 'owner',
-        match: { username },
-        select: 'username avatarUrl',
-    })
-    .then((repos) => repos.filter((r) => r.owner !== null));
-
-    const filtered = repositories.filter((r) => {
-        if(r.visibility === 'public') return true;
-        if(req.user && r.owner._id.toString() === req.user.id) return true;
-        return false;
-    });
-
-    sendSuccess(res, 200, filtered);
-});
-
-export const updateRepository = asyncHandler(async(req, res, next) => {
-    const { username, reponame } = req.params;
-
-    const repository = await Repository.findOne({
-        name: reponame,
-        owner: req.user.id,
-    });
-
-    if(!repository) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    const { description, visibility, language, topics, defaultBranch } =
-    req.body;
-
-    repository.description = description ?? repository.description;
-    repository.visibility = visibility ?? repository.visibility;
-    repository.language = language ?? repository.language;
-    repository.topics = topics ?? repository.topics;
-    repository.defaultBranch = defaultBranch ?? repository.defaultBranch;
-
-    await repository.save();
-
-    sendSuccess(res, 200, repository, 'Repository updated successfully');
-});
-
-export const deleteRepository = asyncHandler(async (req, res, next) => {
-    const { reponame } = req.params;
-
-    const repository = await Repository.findOne({
-        name: reponame,
-        owner: req.user.id,
-    });
-
-    if(!repository) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    await repository.deleteOne();
-
-    sendSuccess(res, 200, null, 'Repository deleted successfully');
-});
-
-export const starRepository = asyncHandler(async (req, res, next) => {
-    const { username, reponame } = req.params;
-
-    const owner = await User.findOne({ username: username.toLowerCase() }).select('_id');
-    if (!owner) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    const repo = await Repository.findOne({ name: reponame, owner: owner._id });
-    if (!repo) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    const isCurrentlyStarred = await Repository.findOne(
-        { _id: repo._id, stars: req.user._id },
-        { _id: 1 }
-    );
-
-    let updated;
-    if (isCurrentlyStarred) {
-        updated = await Repository.findByIdAndUpdate(
-            repo._id,
-            { $pull: { stars: req.user._id } },
-            { new: true, fields: { stars: 1 } }
+        const { page, limit, skip } = paginate(
+            req.query.page,
+            req.query.limit
         );
-    } else {
-        updated = await Repository.findOneAndUpdate(
-            { _id: repo._id, stars: { $ne: req.user._id } },
-            { $addToSet: { stars: req.user._id } },
-            { new: true, fields: { stars: 1 } }
+
+        const user = await resolveOwner(username);
+        if (!user) return next(new AppError('User not found', 404));
+
+        // Owners can view all repositories
+        // Others can only view public repositories
+        const filter = {
+            owner: user._id,
+            ...(req.user?.id !== user._id.toString() && {
+                visibility: 'public',
+            }),
+        };
+
+        const [repositories, totalCount] = await Promise.all([
+            Repository.find(filter)
+                .populate('owner', 'username avatarUrl')
+                .skip(skip)
+                .limit(limit)
+                .sort({ createdAt: -1 }),
+
+            Repository.countDocuments(filter),
+        ]);
+
+        const pagination = buildPaginationMeta(
+            page,
+            limit,
+            totalCount
         );
-    }
 
-    if (!updated) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    if (updated && !isCurrentlyStarred) {
-        await logActivitySafely({
-            actor: req.user.id,
-            type: ACTIVITY_TYPES.REPOSITORY_STARRED,
-            repository: repo._id,
-            metadata: { repoName: repo.name },
+        sendSuccess(res, 200, {
+            repositories,
+            pagination,
         });
     }
+);
 
-    const message = isCurrentlyStarred
-        ? 'Repository unstarred successfully'
-        : 'Repository starred successfully';
+export const updateRepository = asyncHandler(
+    async (req, res, next) => {
+        const { username, reponame } = req.params;
 
-    sendSuccess(res, 200, { stars: updated.stars.length }, message);
-});
+        const owner = await resolveOwner(username);
+        if (!owner || owner._id.toString() !== req.user.id) {
+            return next(new AppError('Repository not found or unauthorized', 404));
+        }
 
-export const forkRepository = asyncHandler(async (req, res, next) => {
-    const { username, reponame } = req.params;
-
-    const owner = await User.findOne({ username: username.toLowerCase() }).select('_id');
-    if (!owner) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    const session = await mongoose.startSession();
-    let forked;
-    try {
-        session.startTransaction({
-            readConcern: { level: 'snapshot' },
-            writeConcern: { w: 'majority' },
+        const repository = await Repository.findOne({
+            name: reponame,
+            owner: req.user.id,
         });
+
+        if (!repository) {
+            return next(new AppError('Repository not found', 404));
+        }
+
+        const {
+            description,
+            visibility,
+            language,
+            topics,
+            defaultBranch,
+        } = req.body;
+
+        repository.description =
+            description ?? repository.description;
+
+        repository.visibility =
+            visibility ?? repository.visibility;
+
+        repository.language =
+            language ?? repository.language;
+
+        repository.topics =
+            topics ?? repository.topics;
+
+        repository.defaultBranch =
+            defaultBranch ?? repository.defaultBranch;
+
+        await repository.save();
+
+        sendSuccess(
+            res,
+            200,
+            repository,
+            'Repository updated successfully'
+        );
+    }
+);
+
+export const deleteRepository = asyncHandler(
+    async (req, res, next) => {
+        const { username, reponame } = req.params;
+
+        const owner = await resolveOwner(username);
+        if (!owner || owner._id.toString() !== req.user.id) {
+            return next(new AppError('Repository not found or unauthorized', 404));
+        }
+
+        const repository = await Repository.findOne({
+            name: reponame,
+            owner: req.user.id,
+        });
+
+        if (!repository) {
+            return next(new AppError('Repository not found', 404));
+        }
+
+        await repository.deleteOne();
+
+        sendSuccess(
+            res,
+            200,
+            null,
+            'Repository deleted successfully'
+        );
+    }
+);
+
+export const starRepository = asyncHandler(
+    async (req, res, next) => {
+        const { username, reponame } = req.params;
+
+        const owner = await resolveOwner(username);
+        if (!owner) return next(new AppError('Repository not found', 404));
+
+        const repository = await Repository.findOne({
+            name: reponame,
+            owner: owner._id,
+        });
+
+        if (!repository) {
+            return next(new AppError('Repository not found', 404));
+        }
+
+        const alreadyStarred = repository.stars.includes(
+            req.user.id
+        );
+
+        let result;
+        if (alreadyStarred) {
+            result = await Repository.updateOne(
+                { _id: repository._id, stars: req.user.id },
+                { $pull: { stars: req.user.id } }
+            );
+        } else {
+            result = await Repository.updateOne(
+                { _id: repository._id, stars: { $ne: req.user.id } },
+                { $addToSet: { stars: req.user.id } }
+            );
+        }
+
+        if (result.modifiedCount > 0 && !alreadyStarred) {
+            try {
+                await logActivity({
+                    actor: req.user.id,
+                    type: ACTIVITY_TYPES.REPOSITORY_STARRED,
+                    repository: repository._id,
+                    metadata: {
+                        repoName: repository.name,
+                    },
+                });
+            } catch {
+                // Prevent activity logging failures from blocking star actions
+            }
+        }
+
+        const updated = await Repository.findById(
+            repository._id
+        );
+
+        const message = alreadyStarred
+            ? 'Repository unstarred successfully'
+            : 'Repository starred successfully';
+
+        sendSuccess(
+            res,
+            200,
+            { stars: updated.stars.length },
+            message
+        );
+    }
+);
+
+export const forkRepository = asyncHandler(
+    async (req, res, next) => {
+        const { username, reponame } = req.params;
+
+        const owner = await resolveOwner(username);
+        if (!owner) return next(new AppError('Repository not found', 404));
+
+        if (!owner) {
+            return next(new AppError('Repository not found', 404));
+        }
 
         const original = await Repository.findOne({
             name: reponame,
             owner: owner._id,
-        }).session(session);
+        });
 
         if (!original) {
-            await session.abortTransaction();
             return next(new AppError('Repository not found', 404));
         }
 
         if (original.owner.toString() === req.user.id) {
-            await session.abortTransaction();
-            return next(new AppError('You cannot fork your own repository', 400));
+            return next(
+                new AppError(
+                    'You cannot fork your own repository',
+                    404
+                )
+            );
         }
 
-        const existing = await Repository.findOne({
-            name: original.name,
-            owner: req.user._id,
-            forkedFrom: original._id,
-        }).session(session);
+        const session = await mongoose.startSession();
+        let forked;
 
-        if (existing) {
-            await session.abortTransaction();
-            return next(new AppError('You have already forked this repository', 400));
+        try {
+            session.startTransaction();
+
+            const existing = await Repository.findOne({
+                name: reponame,
+                owner: req.user.id,
+                forkedFrom: original._id,
+            }).session(session);
+
+            if (existing) {
+                await session.abortTransaction();
+                return next(
+                    new AppError(
+                        'You have already forked this repository',
+                        400
+                    )
+                );
+            }
+
+            [forked] = await Repository.create(
+                [
+                    {
+                        name: original.name,
+                        owner: req.user.id,
+                        description: original.description,
+                        visibility: 'public',
+                        language: original.language,
+                        topics: original.topics,
+                        defaultBranch: original.defaultBranch,
+                        forkedFrom: original._id,
+                    },
+                ],
+                { session }
+            );
+
+            await Repository.findByIdAndUpdate(
+                original._id,
+                { $addToSet: { forks: forked._id } },
+                { session }
+            );
+
+            await session.commitTransaction();
+        } catch (error) {
+            if (session.inTransaction()) {
+                await session.abortTransaction();
+            }
+
+            if (error.code === 11000) {
+                return next(
+                    new AppError(
+                        'You have already forked this repository',
+                        400
+                    )
+                );
+            }
+
+            return next(
+                new AppError('Fork operation failed', 500)
+            );
+        } finally {
+            session.endSession();
         }
 
-        [forked] = await Repository.create([{
-            name: original.name,
-            owner: req.user._id,
-            description: original.description,
-            visibility: original.visibility,
-            language: original.language,
-            topics: original.topics,
-            defaultBranch: original.defaultBranch,
-            forkedFrom: original._id,
-        }], { session });
-
-        const parentUpdate = await Repository.updateOne(
-            { _id: original._id },
-            { $addToSet: { forks: forked._id } },
-            { session }
+        sendSuccess(
+            res,
+            201,
+            forked,
+            'Repository forked successfully'
         );
-
-        if (parentUpdate.modifiedCount === 0) {
-            await session.abortTransaction();
-            return next(new AppError('Fork conflict — please retry', 409));
-        }
-
-        await session.commitTransaction();
-        sendSuccess(res, 201, forked, 'Repository forked successfully');
-    } catch (error) {
-        if (session.inTransaction()) {
-            await session.abortTransaction();
-        }
-        if (error.code === 11000) {
-            return next(new AppError('You have already forked this repository', 400));
-        }
-        if (error.errorLabels?.includes('TransientTransactionError')) {
-            return next(new AppError('Fork conflict — please retry', 409));
-        }
-        return next(new AppError('Fork operation failed', 500));
-    } finally {
-        session.endSession();
     }
-});
+);

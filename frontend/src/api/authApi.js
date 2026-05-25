@@ -3,13 +3,13 @@ import { createApiClient } from './createApiClient.js';
 const authApi = createApiClient();
 
 export const registerUser = async (userData) => {
-  const response = await authApi.post('/auth/register', userData);
-  return response.data;
+  const response = await authApi.post('/register', userData);
+  return response.data.data;
 };
 
 export const loginUser = async (userData) => {
-  const response = await authApi.post('/auth/login', userData);
-  return response.data;
+  const response = await authApi.post('/login', userData);
+  return response.data.data;
 };
 
 export const getMe = async () => {

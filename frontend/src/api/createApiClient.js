@@ -7,9 +7,9 @@ import { devLog } from '../utils/devLogger.js';
 /**
  * Creates an axios client with auth headers and normalized error responses.
  */
-export const createApiClient = (baseURL = API_BASE_URL) => {
+export const createApiClient = (path ='') => {
   const client = axios.create({
-    baseURL,
+    baseURL:`${API_BASE_URL}/api/v1${path}`,
     headers: {
       'Content-Type': 'application/json',
     },

@@ -12,9 +12,11 @@ import {
     Code2,
     Wand2,
     Shield,
+    Menu, X
 } from "lucide-react";
 import { Link } from 'react-router-dom';
 import logo from "../assets/logo.png";
+import { motion, AnimatePresence } from "framer-motion";
 import "../App.css";
 
 export default function GitNestHomepage() {
@@ -26,6 +28,7 @@ export default function GitNestHomepage() {
         return "#home";
     });
     const { isDarkMode, toggleTheme } = useThemeStore();
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
     const marqueeItems = [
@@ -43,10 +46,10 @@ export default function GitNestHomepage() {
     ];
 
     const navLinks = [
-    { name: "Home", href: "#home" },
-    { name: "Features", href: "#features" },
-    { name: "Contributors", href: "#contributors" },
-];
+        { name: "Home", href: "#home" },
+        { name: "Features", href: "#features" },
+        { name: "Contributors", href: "#contributors" },
+    ];
 
     return (
 
@@ -69,8 +72,8 @@ export default function GitNestHomepage() {
             </div>
 
             {/* NAVBAR */}
-            <header className="fixed top-4 inset-x-0 z-50 px-6">
-                <div className="max-w-7xl mx-auto h-20 rounded-[28px] border border-white/50 dark:border-white/10 bg-white/75 dark:bg-[#0c0f14]/70 backdrop-blur-2xl shadow-[0_8px_40px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.45)] flex items-center justify-between px-8 transition-all">
+            <header className="fixed top-4 inset-x-0 z-50 px-3 md:px-6">
+                <div className="max-w-7xl mx-auto h-16 md:h-20 rounded-[24px] md:rounded-[28px] border border-white/50 dark:border-white/10 bg-white/75 dark:bg-[#0c0f14]/70 backdrop-blur-2xl shadow-[0_8px_40px_rgba(15,23,42,0.08)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.45)] flex items-center justify-between px-4 md:px-8 transition-all">
 
                     {/* LOGO */}
                     <div className="flex items-center gap-4 cursor-pointer">
@@ -86,7 +89,7 @@ export default function GitNestHomepage() {
                             />
                         </div>
 
-                        <div>
+                        <div className="hidden sm:block">
                             <h1 className="text-[20px] leading-none font-black tracking-tight pb-2">
                                 Git<span className="text-[#00dc82]">Nest</span>
                             </h1>
@@ -99,27 +102,27 @@ export default function GitNestHomepage() {
 
                     {/* NAV LINKS */}
                     <nav className="hidden lg:flex items-center gap-10">
-                            {navLinks.map((item) => (
-                                <a
-                                    key={item.name}
-                                    href={item.href}
-                                    onClick={() => setActiveLink(item.href)}
-                                    className={`relative text-[15px] font-medium transition-all duration-300 ${
-                                        activeLink === item.href
-                                            ? "text-zinc-950 dark:text-white"
-                                            : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                        {navLinks.map((item) => (
+                            <a
+                                key={item.name}
+                                href={item.href}
+                                onClick={() => setActiveLink(item.href)}
+                                className={`relative text-[15px] font-medium transition-all duration-300 ${activeLink === item.href
+                                    ? "text-zinc-950 dark:text-white"
+                                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
                                     }`}
-                                >
-                                    {item.name}
-                                    {activeLink === item.href && (
-                                        <span className="absolute left-1/2 -translate-x-1/2 top-8 w-1.5 h-1.5 rounded-full bg-[#00dc82]" />
-                                    )}
-                                </a>
-                            ))}
-                        </nav>
+                            >
+                                {item.name}
+                                {activeLink === item.href && (
+                                    <span className="absolute left-1/2 -translate-x-1/2 top-8 w-1.5 h-1.5 rounded-full bg-[#00dc82]" />
+                                )}
+                            </a>
+                        ))}
+                    </nav>
 
                     {/* RIGHT */}
                     <div className="flex  gap-2">
+
 
                         {/* PREMIUM TOGGLE */}
                         <button
@@ -139,6 +142,13 @@ export default function GitNestHomepage() {
                             </div>
                         </button>
 
+                        <button
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="lg:hidden p-3 rounded-xl border border-zinc-200 dark:border-white/10"
+                        >
+                            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+                        </button>
+
                         <Link
                             to="/docs"
                             className="hidden md:flex px-6 py-3 rounded-2xl border border-zinc-200 dark:border-white/20 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl text-zinc-700 dark:text-zinc-200 hover:shadow-lg transition-all"
@@ -148,7 +158,7 @@ export default function GitNestHomepage() {
 
                         <Link
                             to="/register"
-                            className="group px-5 rounded-2xl bg-gradient-to-r from-[#00dc82] via-[#2be4da] to-[#4fd1ff] text-black font-bold shadow-[0_10px_40px_rgba(0,220,130,0.35)] hover:-translate-x-1 transition-all duration-300 flex items-center gap-2"
+                            className="hidden lg:flex group px-5 rounded-2xl bg-gradient-to-r from-[#00dc82] via-[#2be4da] to-[#4fd1ff] text-black font-bold shadow-[0_10px_40px_rgba(0,220,130,0.35)] hover:-translate-x-1 transition-all duration-300 items-center gap-2"
                         >
                             Start Contributing
 
@@ -157,6 +167,45 @@ export default function GitNestHomepage() {
                     </div>
                 </div>
             </header>
+
+            <AnimatePresence>
+                {mobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.25 }}
+                        className="lg:hidden absolute top-[88px] left-3 right-3 rounded-3xl border border-white/10 bg-white/95 dark:bg-[#0c0f14]/95 backdrop-blur-2xl shadow-2xl p-6 z-50"
+                    >
+                        <div className="flex flex-col gap-5">
+                            {navLinks.map((item) => (
+                                <a
+                                    key={item.name}
+                                    href={item.href}
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="text-lg font-medium text-zinc-800 dark:text-white"
+                                >
+                                    {item.name}
+                                </a>
+                            ))}
+
+                            <Link
+                                to="/docs"
+                                className="w-full text-center rounded-2xl border px-4 py-3"
+                            >
+                                Documentation
+                            </Link>
+
+                            <Link
+                                to="/register"
+                                className="w-full text-center rounded-2xl bg-gradient-to-r from-[#00dc82] via-[#2be4da] to-[#4fd1ff] px-4 py-3 font-bold text-black"
+                            >
+                                Start Contributing
+                            </Link>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* HERO */}
             <section className="relative pt-20" id="home">
@@ -240,7 +289,7 @@ export default function GitNestHomepage() {
                                 </div>
 
                                 <span className="text-zinc-700 dark:text-zinc-300 font-medium">
-                                    GSSOC <br/>Community
+                                    GSSOC <br />Community
                                 </span>
                             </div>
 
@@ -412,8 +461,26 @@ export default function GitNestHomepage() {
                 {/* BACKGROUND DECOR */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
 
+                    <div
+                        className="absolute inset-0"
+                        style={{
+                            backgroundImage:
+                                "radial-gradient(circle at 20% 18%, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.45) 14%, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0) 58%), linear-gradient(135deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.12) 24%, rgba(255,255,255,0) 52%)",
+                        }}
+                    />
+
                     {/* LEFT BLUR */}
-                    <div className="absolute left-[-120px] top-[45%] w-[220px] h-[220px] rounded-full bg-blue-200/30 blur-3xl" />
+                    <div className="absolute left-[-120px] top-[45%] w-[220px] h-[220px] rounded-full bg-blue-200/25 blur-3xl" />
+
+                    <div className="absolute -top-24 right-12 h-80 w-80 rounded-full bg-white/50 blur-3xl dark:bg-cyan-400/10" />
+
+                    <div className="absolute inset-0 opacity-[0.04]"
+                        style={{
+                            backgroundImage:
+                                "linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)",
+                            backgroundSize: "80px 80px",
+                        }}
+                    />
 
                     {/* RIGHT CURVE */}
                     <svg
@@ -489,6 +556,7 @@ export default function GitNestHomepage() {
                                 icon: <GitBranch className="w-7 h-7 text-[#00dc82]" />,
                                 color: "#00dc82",
                                 bg: "from-[#ecfff7] to-[#f8fffc]",
+                                darkBg: "dark:from-[#0b1915] dark:to-[#0f1f1a]",
                             },
                             {
                                 title: "AI Workflows",
@@ -496,6 +564,7 @@ export default function GitNestHomepage() {
                                 icon: <Sparkles className="w-7 h-7 text-[#3b82f6]" />,
                                 color: "#3b82f6",
                                 bg: "from-[#f2f7ff] to-[#f9fbff]",
+                                darkBg: "dark:from-[#0b1524] dark:to-[#101a2c]",
                             },
                             {
                                 title: "Team Collaboration",
@@ -503,6 +572,7 @@ export default function GitNestHomepage() {
                                 icon: <Users className="w-7 h-7 text-[#9333ea]" />,
                                 color: "#9333ea",
                                 bg: "from-[#faf5ff] to-[#fcfaff]",
+                                darkBg: "dark:from-[#171022] dark:to-[#120f1e]",
                             },
                             {
                                 title: "Developer First",
@@ -510,13 +580,16 @@ export default function GitNestHomepage() {
                                 icon: <ShieldCheck className="w-7 h-7 text-[#f97316]" />,
                                 color: "#f97316",
                                 bg: "from-[#fff7f0] to-[#fffaf7]",
+                                darkBg: "dark:from-[#21140d] dark:to-[#18110e]",
                             },
                         ].map((feature) => (
 
                             <div
                                 key={feature.title}
-                                className={`group relative overflow-hidden rounded-[34px] border border-white/60 dark:border-white/5 bg-gradient-to-br ${feature.bg} dark:bg-[#11151d]/80 backdrop-blur-xl p-8 shadow-[0_10px_40px_rgba(15,23,42,0.05)] hover:-translate-y-2 hover:shadow-[0_20px_60px_rgba(15,23,42,0.12)] transition-all duration-500`}
+                                className={`group relative overflow-hidden rounded-[34px] border border-white/60 dark:border-white/5 bg-gradient-to-br ${feature.bg} ${feature.darkBg} backdrop-blur-xl p-8 shadow-[0_10px_40px_rgba(15,23,42,0.05)] hover:-translate-y-2 hover:shadow-[0_20px_60px_rgba(15,23,42,0.12)] transition-all duration-500`}
                             >
+
+                                <div className="absolute inset-0 bg-gradient-to-br from-white/55 via-white/15 to-transparent dark:from-white/6 dark:via-white/0 pointer-events-none" />
 
                                 {/* TOP GLOW */}
                                 <div
@@ -896,6 +969,28 @@ export default function GitNestHomepage() {
                                 ))}
                             </div>
 
+                        </div>
+
+                        {/* LEGAL */}
+                        <div>
+
+                            <h4 className="text-[28px] font-black tracking-[-0.04em] text-[#071138] dark:text-white mb-8">
+                                Legal
+                            </h4>
+
+                            <div className="space-y-5">
+
+                                <Link
+                                    to="/terms"
+                                    className="group flex items-center gap-3 text-[17px] text-[#475569] hover:text-[#00b86b] transition-all duration-300"
+                                >
+
+                                    <div className="w-2 h-2 rounded-full bg-[#00c97b] group-hover:scale-150 transition-transform" />
+
+                                    Terms & Conditions
+
+                                </Link>
+                            </div>
                         </div>
                     </div>
                 </div>

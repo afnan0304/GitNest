@@ -2,10 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { loginUser, registerUser, getMe } from '../api/authApi';
 
-/**
- * Helper function to extract and validate user data from API response
- * Ensures safe access to nested data structure
- */
 const extractUserData = (responseData) => {
   if (!responseData || !responseData.data) {
     return null;
@@ -14,9 +10,6 @@ const extractUserData = (responseData) => {
   return { _id, username, email, token };
 };
 
-/**
- * Extract message from normalized API errors
- */
 const extractErrorMessage = (error) => {
   if (error?.errors && Array.isArray(error.errors) && error.errors.length > 0) {
     return error.errors.map((err) => err.message).join(', ');
@@ -33,103 +26,60 @@ export const useAuthStore = create(
       loading: false,
       error: null,
 
-      /**
-       * Login with email and password
-       * Stores user data and token in persistent storage
-       */
       login: async (email, password) => {
         set({ loading: true, error: null });
         try {
           const res = await loginUser({ email, password });
-          const userData = extractUserData(res);
-
-          if (!userData?.token) {
-            throw new Error('Invalid response: token not found');
-          }
-
           set({
-            user: { _id: userData._id, username: userData.username, email: userData.email },
-            token: userData.token,
+            user: { _id: res._id, username: res.username, email: res.email },
+            token: res.token,
             isAuthenticated: true,
             loading: false,
           });
         } catch (error) {
-          const errorMessage = extractErrorMessage(error);
           set({
-            error: errorMessage,
+            error: getFriendlyAuthError(error, 'Login failed'),
             loading: false,
           });
           throw error;
         }
       },
 
-      /**
-       * Register with username, email, and password
-       * Automatically logs in user after successful registration
-       */
       register: async (userData) => {
         set({ loading: true, error: null });
         try {
           const res = await registerUser(userData);
-          const extractedData = extractUserData(res);
-
-          if (!extractedData?.token) {
-            throw new Error('Invalid response: token not found');
-          }
-
           set({
-            user: {
-              _id: extractedData._id,
-              username: extractedData.username,
-              email: extractedData.email,
-            },
-            token: extractedData.token,
+            user: { _id: res._id, username: res.username, email: res.email },
+            token: res.token,
             isAuthenticated: true,
             loading: false,
           });
         } catch (error) {
-          const errorMessage = extractErrorMessage(error);
           set({
-            error: errorMessage,
+            error: getFriendlyAuthError(error, 'Registration failed'),
             loading: false,
           });
           throw error;
         }
       },
 
-      /**
-       * Logout: Clear all auth state
-       */
       logout: () => {
         set({ user: null, token: null, isAuthenticated: false, error: null });
       },
-
-      /**
-       * Clear error message
-       */
       clearError: () => {
         set({ error: null });
       },
-
-      /**
-       * Check authentication: Verify token is still valid with backend
-       * Called on app initialization to restore auth state safely
-       */
       checkAuth: async () => {
         set({ loading: true, error: null });
         try {
           const res = await getMe();
-          if (res.data) {
-            set({
-              user: res.data,
-              isAuthenticated: true,
-              loading: false,
-            });
-          } else {
-            throw new Error('Invalid response structure');
-          }
-        } catch {
-          // Token is invalid or expired - clear auth state
+          set({
+            user: res,
+            isAuthenticated: true,
+            loading: false,
+          });
+        } catch (error) {
           set({
             user: null,
             token: null,
