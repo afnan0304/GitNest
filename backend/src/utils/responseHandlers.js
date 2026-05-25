@@ -1,10 +1,7 @@
-/**
- * Send standardized success response
- * Format: { success: true, message, data, requestId? }
- */
 export const sendSuccess = (res, statusCode, data, message = 'Success') => {
   const payload = {
     success: true,
+    status: 'success',
     message,
     data,
   };
@@ -16,12 +13,10 @@ export const sendSuccess = (res, statusCode, data, message = 'Success') => {
   res.status(statusCode).json(payload);
 };
 
-/**
- * Send paginated success response
- */
 export const sendPaginated = (res, statusCode, data, pagination, message = 'Success') => {
   const payload = {
     success: true,
+    status: 'success',
     message,
     data,
     pagination,
@@ -34,9 +29,6 @@ export const sendPaginated = (res, statusCode, data, pagination, message = 'Succ
   res.status(statusCode).json(payload);
 };
 
-/**
- * Send standardized error response
- */
 export const sendError = (
   res,
   {

@@ -12,6 +12,7 @@ import { protect } from '../middleware/authMiddleware.js';
 import resolveRepositoryContext from '../middleware/resolveRepositoryContext.js';
 import validate from '../middleware/validate.js';
 import {
+    repoParamValidator,
     createRepositoryValidator,
     updateRepositoryValidator,
 } from '../validators/repository.validators.js';
@@ -20,13 +21,13 @@ const router = express.Router();
 
 //Public routes
 router.get('/:username', getUserRepositories);
-router.get('/:username/:reponame', resolveRepositoryContext, getRepository);
+router.get('/:username/:reponame', validate(repoParamValidator), resolveRepositoryContext, getRepository);
 
 //Protected routes
 router.post('/', protect, validate(createRepositoryValidator), createRepository);
-router.put('/:username/:reponame', protect, resolveRepositoryContext, validate(updateRepositoryValidator), updateRepository);
-router.delete('/:username/:reponame', protect, resolveRepositoryContext, deleteRepository);
-router.post('/:username/:reponame/star', protect, resolveRepositoryContext, starRepository);
-router.post('/:username/:reponame/fork', protect, resolveRepositoryContext, forkRepository);
+router.put('/:username/:reponame', protect, validate(repoParamValidator), resolveRepositoryContext, validate(updateRepositoryValidator), updateRepository);
+router.delete('/:username/:reponame', protect, validate(repoParamValidator), resolveRepositoryContext, deleteRepository);
+router.post('/:username/:reponame/star', protect, validate(repoParamValidator), resolveRepositoryContext, starRepository);
+router.post('/:username/:reponame/fork', protect, validate(repoParamValidator), resolveRepositoryContext, forkRepository);
 
 export default router;
