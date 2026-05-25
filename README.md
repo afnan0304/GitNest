@@ -118,6 +118,12 @@ The dark mode is implemented using TailwindCSS `dark:` variants, ensuring perfec
 - 🔔 **Real-time Notifications** — Live updates via Socket.io
 - 🌙 **Dark Mode** — Full dark/light theme support
 
+## API Contract Notes
+
+- Repository activity feeds now use `GET /api/v1/activities/repository/:username/:reponame`.
+- The frontend helper `fetchRepositoryActivities(username, repo)` in `frontend/src/api/activityApi.js` matches that route.
+- Repository-scoped mutations still use `/:username/:reponame`, but the backend now resolves the exact repository at the route edge before any mutation or feed lookup runs.
+
 ## 🛠 Engineering Stack
 
 | Layer | Component |

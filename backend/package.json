@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 0",
+    "test": "node --test --test-concurrency=1",
     "lint": "echo \"No linting configured\""
   },
   "repository": {

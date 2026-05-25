@@ -55,33 +55,11 @@ export const createRepository = asyncHandler(async (req, res, next) => {
 });
 
 export const getRepository = asyncHandler(async (req, res, next) => {
-    const { username, reponame } = req.params;
-
-    const owner = await User.findOne({
-        username: username.toLowerCase(),
-    });
-
-    if (!owner) {
+    if (!req.resolvedRepository) {
         return next(new AppError('Repository not found', 404));
     }
 
-    const repository = await Repository.findOne({
-        name: reponame,
-        owner: owner._id,
-    }).populate('owner', 'username avatarUrl bio');
-
-    if (!repository) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    if (
-        repository.visibility === 'private' &&
-        repository.owner._id.toString() !== req.user?.id
-    ) {
-        return next(new AppError('Repository not found', 404));
-    }
-
-    sendSuccess(res, 200, repository);
+    sendSuccess(res, 200, req.resolvedRepository);
 });
 
 export const getUserRepositories = asyncHandler(
@@ -136,29 +114,11 @@ export const getUserRepositories = asyncHandler(
 
 export const updateRepository = asyncHandler(
     async (req, res, next) => {
-        const { username, reponame } = req.params;
-
-        const owner = await User.findOne({
-            username: username.toLowerCase(),
-        });
-
-        if (!owner || owner._id.toString() !== req.user.id) {
-            return next(
-                new AppError(
-                    'Repository not found or unauthorized',
-                    404
-                )
-            );
-        }
-
-        const repository = await Repository.findOne({
-            name: reponame,
-            owner: req.user.id,
-        });
-
-        if (!repository) {
+        if (!req.resolvedRepository) {
             return next(new AppError('Repository not found', 404));
         }
+
+        const repository = req.resolvedRepository;
 
         const {
             description,
@@ -196,29 +156,11 @@ export const updateRepository = asyncHandler(
 
 export const deleteRepository = asyncHandler(
     async (req, res, next) => {
-        const { username, reponame } = req.params;
-
-        const owner = await User.findOne({
-            username: username.toLowerCase(),
-        });
-
-        if (!owner || owner._id.toString() !== req.user.id) {
-            return next(
-                new AppError(
-                    'Repository not found or unauthorized',
-                    404
-                )
-            );
-        }
-
-        const repository = await Repository.findOne({
-            name: reponame,
-            owner: req.user.id,
-        });
-
-        if (!repository) {
+        if (!req.resolvedRepository) {
             return next(new AppError('Repository not found', 404));
         }
+
+        const repository = req.resolvedRepository;
 
         await repository.deleteOne();
 
@@ -233,24 +175,11 @@ export const deleteRepository = asyncHandler(
 
 export const starRepository = asyncHandler(
     async (req, res, next) => {
-        const { username, reponame } = req.params;
-
-        const owner = await User.findOne({
-            username: username.toLowerCase(),
-        });
-
-        if (!owner) {
+        if (!req.resolvedRepository) {
             return next(new AppError('Repository not found', 404));
         }
 
-        const repository = await Repository.findOne({
-            name: reponame,
-            owner: owner._id,
-        });
-
-        if (!repository) {
-            return next(new AppError('Repository not found', 404));
-        }
+        const repository = req.resolvedRepository;
 
         const alreadyStarred = repository.stars.includes(
             req.user.id
@@ -296,26 +225,13 @@ export const starRepository = asyncHandler(
 
 export const forkRepository = asyncHandler(
     async (req, res, next) => {
-        const { username, reponame } = req.params;
-
-        const owner = await User.findOne({
-            username: username.toLowerCase(),
-        });
-
-        if (!owner) {
+        if (!req.resolvedRepository) {
             return next(new AppError('Repository not found', 404));
         }
 
-        const original = await Repository.findOne({
-            name: reponame,
-            owner: owner._id,
-        });
+        const original = req.resolvedRepository;
 
-        if (!original) {
-            return next(new AppError('Repository not found', 404));
-        }
-
-        if (original.owner.toString() === req.user.id) {
+        if (original.owner._id.toString() === req.user.id) {
             return next(
                 new AppError(
                     'You cannot fork your own repository',
@@ -325,7 +241,7 @@ export const forkRepository = asyncHandler(
         }
 
         const alreadyForked = await Repository.findOne({
-            name: reponame,
+            name: original.name,
             owner: req.user.id,
             forkedFrom: original._id,
         });

@@ -52,14 +52,16 @@ export const getUserFeed = async ({ username, page, limit } = {}) => {
   return buildActivityPage({ actor: user._id }, page, limit);
 };
 
-export const getRepositoryFeed = async ({ repo, page, limit } = {}) => {
-  if (!repo) {
+export const getRepositoryFeed = async ({ repositoryId, page, limit } = {}) => {
+  if (!repositoryId) {
     throw new AppError('Repository parameter is required', 400);
   }
 
-  const repository = mongoose.Types.ObjectId.isValid(repo)
-    ? await Repository.findById(repo)
-    : await Repository.findOne({ name: repo });
+  if (!mongoose.Types.ObjectId.isValid(repositoryId)) {
+    throw new AppError('Invalid repository identifier', 400);
+  }
+
+  const repository = await Repository.findById(repositoryId);
 
   if (!repository) {
     throw new AppError('Repository not found', 404);

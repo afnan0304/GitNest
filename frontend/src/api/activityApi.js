@@ -14,8 +14,8 @@ export const fetchUserActivities = async (username, page = 1, limit = 10) => {
   return response.data;
 };
 
-export const fetchRepositoryActivities = async (repo, page = 1, limit = 10) => {
-  const response = await authApi.get(`/activities/repository/${repo}`, {
+export const fetchRepositoryActivities = async (username, repo, page = 1, limit = 10) => {
+  const response = await authApi.get(`/activities/repository/${username}/${repo}`, {
     params: { page, limit },
   });
   return response.data;
