@@ -35,40 +35,27 @@ export const followUser = asyncHandler(async (req, res, next) => {
   if (!target) return next(new AppError('User not found', 404));
   if (target._id.equals(req.user._id)) return next(new AppError('You cannot follow yourself', 400));
 
-  const session = await mongoose.startSession();
   try {
-    session.startTransaction({
-      readConcern: { level: 'snapshot' },
-      writeConcern: { w: 'majority' },
-    });
-
     const targetResult = await User.updateOne(
       { _id: target._id, followers: { $ne: req.user._id } },
-      { $addToSet: { followers: req.user._id } },
-      { session }
+      { $addToSet: { followers: req.user._id } }
     );
 
     if (targetResult.matchedCount === 0) {
-      await session.abortTransaction();
       return next(new AppError('User not found', 404));
     }
     if (targetResult.modifiedCount === 0) {
-      await session.abortTransaction();
       return next(new AppError('Already following this user', 400));
     }
 
     const selfResult = await User.updateOne(
       { _id: req.user._id, following: { $ne: target._id } },
-      { $addToSet: { following: target._id } },
-      { session }
+      { $addToSet: { following: target._id } }
     );
 
     if (selfResult.matchedCount === 0) {
-      await session.abortTransaction();
       return next(new AppError('User not found', 404));
     }
-
-    await session.commitTransaction();
 
     await logActivitySafely({
       actor: req.user.id,
@@ -79,10 +66,7 @@ export const followUser = asyncHandler(async (req, res, next) => {
 
     sendSuccess(res, 200, null, 'Followed successfully');
   } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
     return next(new AppError('Follow operation failed', 500));
-  } finally {
-    session.endSession();
   }
 });
 
@@ -92,35 +76,23 @@ export const unfollowUser = asyncHandler(async (req, res, next) => {
   if (!target) return next(new AppError('User not found', 404));
   if (target._id.equals(req.user._id)) return next(new AppError('You cannot unfollow yourself', 400));
 
-  const session = await mongoose.startSession();
   try {
-    session.startTransaction({
-      readConcern: { level: 'snapshot' },
-      writeConcern: { w: 'majority' },
-    });
-
     const targetResult = await User.updateOne(
       { _id: target._id },
-      { $pull: { followers: req.user._id } },
-      { session }
+      { $pull: { followers: req.user._id } }
     );
 
     const selfResult = await User.updateOne(
       { _id: req.user._id },
-      { $pull: { following: target._id } },
-      { session }
+      { $pull: { following: target._id } }
     );
 
     if (targetResult.matchedCount === 0 || selfResult.matchedCount === 0) {
-      await session.abortTransaction();
       return next(new AppError('User not found', 404));
     }
     if (targetResult.modifiedCount === 0 && selfResult.modifiedCount === 0) {
-      await session.abortTransaction();
       return next(new AppError('You were not following this user', 400));
     }
-
-    await session.commitTransaction();
 
     await logActivitySafely({
       actor: req.user.id,
@@ -131,10 +103,7 @@ export const unfollowUser = asyncHandler(async (req, res, next) => {
 
     sendSuccess(res, 200, null, 'Unfollowed successfully');
   } catch (error) {
-    if (session.inTransaction()) await session.abortTransaction();
     return next(new AppError('Unfollow operation failed', 500));
-  } finally {
-    session.endSession();
   }
 });
 
