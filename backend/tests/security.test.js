@@ -1,4 +1,5 @@
 import { jest, describe, beforeEach, afterEach, test, expect } from '@jest/globals';
+import request from 'supertest';
 
 process.env.NODE_ENV = 'test';
 
@@ -6,6 +7,8 @@ const mockUserFindOne = jest.fn();
 const mockRepoFindOne = jest.fn();
 const mockRepoFindById = jest.fn();
 const mockActivityCreate = jest.fn();
+const mockActivityFind = jest.fn();
+const mockActivityCount = jest.fn();
 
 jest.unstable_mockModule('../src/models/User.model.js', () => ({
   default: {
@@ -26,13 +29,26 @@ jest.unstable_mockModule('../src/models/Repository.model.js', () => ({
 jest.unstable_mockModule('../src/models/Activity.model.js', () => ({
   default: {
     create: mockActivityCreate,
-    find: jest.fn(),
-    countDocuments: jest.fn(),
+    find: mockActivityFind,
+    countDocuments: mockActivityCount,
   },
 }));
 
 const { default: resolveRepositoryContext } = await import('../src/middleware/resolveRepositoryContext.js');
 const { getRepositoryFeed } = await import('../src/services/activity.service.js');
+const { default: express } = await import('express');
+const { default: repositoryRoutes } = await import('../src/routes/repository.routes.js');
+const { default: activityRoutes } = await import('../src/routes/activity.routes.js');
+const { default: errorHandler } = await import('../src/middleware/errorHandler.js');
+
+const createTestApp = () => {
+  const app = express();
+  app.use(express.json());
+  app.use('/api/v1/repositories', repositoryRoutes);
+  app.use('/api/v1/activities', activityRoutes);
+  app.use(errorHandler);
+  return app;
+};
 
 const invokeMiddleware = (middleware, req) =>
   new Promise((resolve) => {
@@ -127,5 +143,59 @@ describe('repository security regressions', () => {
     await expect(
       getRepositoryFeed({ repo: 'shared', page: 1, limit: 10 })
     ).rejects.toThrow('Repository parameter is required');
+  });
+});
+
+describe('repository activity routes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const query = {
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue([]),
+    };
+    mockActivityFind.mockReturnValue(query);
+    mockActivityCount.mockResolvedValue(0);
+  });
+
+  test('GET repository resolves the correct tenant repository', async () => {
+    const app = createTestApp();
+
+    mockUserFindOne.mockResolvedValue({ _id: 'user-alice', username: 'alice' });
+    mockRepoFindOne.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
+        _id: 'repo-alice',
+        name: 'shared',
+        owner: { _id: 'user-alice', username: 'alice' },
+        visibility: 'public',
+      }),
+    });
+
+    const res = await request(app)
+      .get('/api/v1/repositories/alice/shared');
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.owner.username).toBe('alice');
+  });
+
+  test('GET repository activity hides private repos for other users', async () => {
+    const app = createTestApp();
+
+    mockUserFindOne.mockResolvedValue({ _id: 'user-alice', username: 'alice' });
+    mockRepoFindOne.mockReturnValue({
+      populate: jest.fn().mockResolvedValue({
+        _id: 'repo-private',
+        name: 'secret',
+        owner: { _id: 'user-alice', username: 'alice' },
+        visibility: 'private',
+      }),
+    });
+
+    const res = await request(app)
+      .get('/api/v1/activities/repository/alice/secret');
+
+    expect(res.status).toBe(404);
   });
 });
